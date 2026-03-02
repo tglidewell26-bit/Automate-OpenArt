@@ -9,7 +9,7 @@ export async function parsePdf(buffer: Buffer): Promise<{
   await parser.load();
 
   const info = await parser.getInfo();
-  const totalPages = info.pages || 1;
+  const totalPages = info.total || 1;
 
   const pageTexts: Record<number, string> = {};
   let fullText = "";
