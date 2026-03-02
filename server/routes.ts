@@ -14,9 +14,9 @@ function sleep(ms: number) {
 
 function fallbackPrompts(reason: string): PromptVariation[] {
   return [
-    { type: "moment", label: "Moment / Action", text: `[${reason}] Please regenerate this block.` },
-    { type: "atmosphere", label: "Atmosphere / Environment", text: `[${reason}] Please regenerate this block.` },
-    { type: "emotion", label: "Emotion / Symbolism", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea1", label: "Prompt Idea 1", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea2", label: "Prompt Idea 2", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea3", label: "Prompt Idea 3", text: `[${reason}] Please regenerate this block.` },
   ];
 }
 
@@ -205,8 +205,21 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const fullText = Object.values(project.pageTexts).join("\n\n");
-    const characters = await extractCharacters(fullText);
+    const { startPage, endPage } = project.boundaries || { startPage: 1, endPage: project.totalPages };
+    let bookText = "";
+    for (let p = startPage; p <= endPage; p++) {
+      const pageText = project.pageTexts[p] || "";
+      if (pageText.trim()) {
+        bookText += `[Page ${p}]\n${pageText}\n\n`;
+      }
+    }
+
+    const fallbackText = Object.entries(project.pageTexts)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([page, text]) => `[Page ${page}]\n${text}`)
+      .join("\n\n");
+
+    const characters = await extractCharacters(bookText || fallbackText);
     await storage.updateCharacters(project.id, characters);
 
     res.json({ characters });

@@ -92,26 +92,27 @@ export async function generatePrompts(
         content: `You are an expert at generating OpenArt-optimized image prompts for children's book illustrations.
 
 RULES (STRICT):
-- Each prompt must be 150-200 words
+- Base every prompt strictly on the provided page text. Do not invent unrelated scenes.
+- Each prompt must be 110-170 words
 - Write in present tense
 - Write in prose only (no bullets, no lists)
-- Focus on setting, atmosphere, emotion, and symbolic detail
-- NEVER mention character appearance (no physical descriptions of characters)
+- Every prompt must naturally include action, atmosphere, and emotion in one cohesive scene description
+- Mention character names when they are present in the source text, and keep details consistent with the text
 - NEVER include any of these forbidden terms: ${forbiddenList}
 - NEVER describe artistic medium, style, resolution, camera terms, or rendering terms
 
 TONE: ${tone}
 
-Generate exactly 3 prompt variations:
-1. MOMENT: Focus on the action, movement, and key moment happening in the scene
-2. ATMOSPHERE: Focus on the environment, lighting, weather, and spatial details
-3. EMOTION: Focus on emotional resonance, symbolism, and thematic depth
+Generate exactly 3 DIFFERENT prompt ideas for the same page range:
+1. IDEA 1: a faithful interpretation of the most important moment
+2. IDEA 2: a different but still text-faithful composition or moment
+3. IDEA 3: another text-faithful option emphasizing a different beat
 
 Respond with ONLY valid JSON array:
 [
-  {"type": "moment", "label": "Moment / Action", "text": "..."},
-  {"type": "atmosphere", "label": "Atmosphere / Environment", "text": "..."},
-  {"type": "emotion", "label": "Emotion / Symbolism", "text": "..."}
+  {"type": "idea1", "label": "Prompt Idea 1", "text": "..."},
+  {"type": "idea2", "label": "Prompt Idea 2", "text": "..."},
+  {"type": "idea3", "label": "Prompt Idea 3", "text": "..."}
 ]`
       },
       {
@@ -128,25 +129,38 @@ Respond with ONLY valid JSON array:
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      return parsed.map((p: any) => ({
-        type: p.type || "moment",
-        label: p.label || p.type || "Prompt",
+      const labels = ["Prompt Idea 1", "Prompt Idea 2", "Prompt Idea 3"] as const;
+      const fallbackTypes = ["idea1", "idea2", "idea3"] as const;
+      const normalized = parsed.slice(0, 3).map((p: any, idx: number) => ({
+        type: (fallbackTypes.includes(p.type) ? p.type : fallbackTypes[idx]) as "idea1" | "idea2" | "idea3",
+        label: p.label || labels[idx],
         text: p.text || "",
       }));
+
+      while (normalized.length < 3) {
+        const idx = normalized.length;
+        normalized.push({
+          type: fallbackTypes[idx],
+          label: labels[idx],
+          text: "Failed to generate prompt. Please try again.",
+        });
+      }
+
+      return normalized;
     }
   } catch {}
 
   return [
-    { type: "moment", label: "Moment / Action", text: "Failed to generate prompt. Please try again." },
-    { type: "atmosphere", label: "Atmosphere / Environment", text: "Failed to generate prompt. Please try again." },
-    { type: "emotion", label: "Emotion / Symbolism", text: "Failed to generate prompt. Please try again." },
+    { type: "idea1", label: "Prompt Idea 1", text: "Failed to generate prompt. Please try again." },
+    { type: "idea2", label: "Prompt Idea 2", text: "Failed to generate prompt. Please try again." },
+    { type: "idea3", label: "Prompt Idea 3", text: "Failed to generate prompt. Please try again." },
   ];
 }
 
 export async function extractCharacters(
   fullText: string
 ): Promise<ExtractedCharacter[]> {
-  const truncatedText = fullText.substring(0, 15000);
+  const truncatedText = fullText.substring(0, 50000);
 
   const response = await openai.chat.completions.create({
     model: MODEL_NAME,
@@ -155,14 +169,17 @@ export async function extractCharacters(
         role: "system",
         content: `You are extracting character references from a children's book for use in image generation tools.
 
-For each character found, extract:
+For each named or clearly recurring character found, extract:
 - name: The character's primary name
 - aliases: Alternative names or nicknames (array of strings)
-- physicalTraits: Physical appearance details (hair, eyes, build, age, etc.)
-- clothing: Typical clothing or accessories described
-- recurringFeatures: Objects, pets, or notable recurring visual elements associated with this character
+- physicalTraits: Only details explicitly grounded in the text
+- clothing: Clothing/accessories explicitly grounded in the text
+- recurringFeatures: Recurring props, pets, or motifs from the text
 
-Merge duplicates (e.g. "Mr. Gulliver" and "Gulliver" should be one entry).
+Rules:
+- Use only evidence from the supplied text.
+- Merge duplicates (e.g. "Mr. Gulliver" and "Gulliver" should be one entry).
+- Ignore one-off generic mentions like "a boy" unless that figure becomes recurring.
 
 Respond with ONLY valid JSON array:
 [

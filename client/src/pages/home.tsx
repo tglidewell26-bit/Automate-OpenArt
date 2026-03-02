@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image, Users, Settings, BookOpen } from "lucide-react";
+import { Upload, Image, Users, BookOpen } from "lucide-react";
 import UploadTab from "@/components/upload-tab";
 import IllustrationsTab from "@/components/illustrations-tab";
 import CharactersTab from "@/components/characters-tab";
-import SettingsTab from "@/components/settings-tab";
 import type { ProjectData } from "@shared/schema";
 
 export default function HomePage() {
@@ -31,7 +30,7 @@ export default function HomePage() {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-11" data-testid="tabs-navigation">
+          <TabsList className="grid w-full grid-cols-3 h-11" data-testid="tabs-navigation">
             <TabsTrigger value="upload" className="gap-2" data-testid="tab-upload">
               <Upload className="w-4 h-4" />
               <span className="hidden sm:inline">Upload</span>
@@ -53,15 +52,6 @@ export default function HomePage() {
             >
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Characters</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="gap-2"
-              disabled={!project}
-              data-testid="tab-settings"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
 
@@ -106,16 +96,6 @@ export default function HomePage() {
             )}
           </TabsContent>
 
-          <TabsContent value="settings">
-            {project && (
-              <SettingsTab
-                project={project}
-                onSettingsUpdated={(settings) =>
-                  setProject({ ...project, settings })
-                }
-              />
-            )}
-          </TabsContent>
         </Tabs>
       </main>
     </div>
