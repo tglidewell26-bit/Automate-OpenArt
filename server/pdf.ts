@@ -5,8 +5,8 @@ export async function parsePdf(buffer: Buffer): Promise<{
   pageTexts: Record<number, string>;
   fullText: string;
 }> {
-  const parser = new PDFParse({});
-  await parser.load(buffer);
+  const parser = new PDFParse({ data: buffer });
+  await parser.load();
 
   const info = await parser.getInfo();
   const totalPages = info.pages || 1;
