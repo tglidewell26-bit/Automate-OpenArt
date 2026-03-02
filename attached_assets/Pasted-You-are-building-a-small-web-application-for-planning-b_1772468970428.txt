@@ -1,0 +1,216 @@
+You are building a small web application for planning book illustrations.
+
+High-level purpose
+
+This app helps an author plan illustrations for children’s books by:
+
+Reading a PDF book with page numbers
+
+Determining where illustrations should go (every 3 pages)
+
+Generating OpenArt-optimized image prompts
+
+Extracting a character reference list from the book
+
+The app does NOT generate images.
+It only generates prompts and references.
+
+Core requirements
+1. Input
+
+User uploads a PDF.
+
+The PDF contains:
+
+A Table of Contents (TOC)
+
+Page numbers
+
+An Author Biography section at the end
+
+2. Book boundary detection (AI-assisted)
+
+Use an LLM to:
+
+Read the TOC and identify:
+
+The page number where Chapter 1 begins
+
+Scan the end of the PDF and identify:
+
+The Author Biography section
+
+Mark the page before it as the end of the book
+
+Output:
+
+{
+  "startPage": number,
+  "endPage": number
+}
+
+Allow the user to manually edit these values in the UI.
+
+3. Illustration placement (NO AI)
+
+Once startPage and endPage are known:
+
+Illustration placement is pure math
+
+Every 3 pages = 1 illustration
+
+No AI involved
+
+Example:
+
+Pages 8–10 → Illustration 1
+
+Pages 11–13 → Illustration 2
+
+Continue until endPage
+
+4. Prompt context logic
+
+For each illustration block:
+
+Prompt context = previous two pages + current block
+
+Example:
+
+Illustration for pages 22–24
+
+Context pages = 20–24
+
+If fewer pages exist (early in book), use what is available
+
+5. Prompt generation (OpenArt-optimized)
+
+Generate 3 prompt options per illustration using OpenAI.
+
+Prompt rules (STRICT)
+
+Length: 150–200 words max
+
+Present tense
+
+Prose only (no bullets)
+
+Focus on:
+
+setting
+
+atmosphere
+
+emotion
+
+symbolic detail
+
+Forbidden content (must be filtered or avoided):
+
+Medium (oil painting, watercolor, digital art, etc.)
+
+Style (realistic, anime style, cinematic style, etc.)
+
+Resolution (4k, 8k, ultra-HD, photorealistic, etc.)
+
+Camera or rendering terms
+
+Do NOT describe character appearance
+(character and style are handled separately by the user in OpenArt)
+
+6. Prompt variations
+
+For each illustration, generate:
+
+Moment / Action focused prompt
+
+Atmosphere / Environment focused prompt
+
+Emotion / Symbolism focused prompt
+
+All three prompts are based on the same text context.
+
+7. Character extraction (separate tab)
+
+Use Gemini (or another LLM) to scan the full book and extract:
+
+Character names
+
+Aliases
+
+Physical traits
+
+Clothing
+
+Recurring features or items
+
+Merge duplicate references (e.g. “Mr. Gulliver” → “Gulliver”).
+
+Output should be editable and stored.
+
+This tab is reference only, used to help the user build characters in OpenArt.
+
+Web UI structure
+
+Simple and functional. No design fluff.
+
+Pages / Tabs
+Upload
+
+Upload PDF
+
+Display detected startPage and endPage
+
+Allow manual override
+
+Illustrations
+
+List illustration blocks:
+
+page range
+
+3 prompts
+
+copy-to-clipboard button for each prompt
+
+Characters
+
+List extracted characters
+
+Editable feature fields
+
+Copy-ready text blocks
+
+Settings
+
+Model selector (OpenAI ↔ Gemini)
+
+Forbidden phrase list (editable)
+
+Prompt tone presets
+
+Technical constraints
+
+Tech stack: your choice, keep it simple
+
+No external API wiring required (assume Replit handles auth)
+
+Store data locally or with a lightweight DB
+
+Code should be modular and clearly commented
+
+Build an MVP, not an enterprise system
+
+Output expectation
+
+Generate:
+
+A working web app
+
+Clear folder structure
+
+Minimal but functional UI
+
+Safe, deterministic behavior
+
+Comments explaining AI prompts and logic
