@@ -16,7 +16,7 @@ export interface IllustrationBlock {
 }
 
 export interface PromptVariation {
-  type: "moment" | "atmosphere" | "emotion";
+  type: "idea1" | "idea2" | "idea3";
   label: string;
   text: string;
 }

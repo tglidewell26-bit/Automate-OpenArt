@@ -7,22 +7,65 @@ const pdfParse = require("pdf-parse") as (
   options?: Record<string, unknown>
 ) => Promise<{ numpages: number; text: string }>;
 
+type TextItem = {
+  str?: string;
+  transform?: number[];
+};
+
+async function renderPage(pageData: any): Promise<string> {
+  const textContent = await pageData.getTextContent({
+    normalizeWhitespace: true,
+    disableCombineTextItems: false,
+  });
+
+  let text = "";
+  let lastY: number | undefined;
+
+  for (const item of textContent.items as TextItem[]) {
+    const value = item.str?.trim();
+    if (!value) continue;
+
+    const y = item.transform?.[5];
+    if (text.length > 0) {
+      text += y === lastY ? " " : "\n";
+    }
+
+    text += value;
+    lastY = y;
+  }
+
+  return text.trim();
+}
+
 export async function parsePdf(buffer: Buffer): Promise<{
   totalPages: number;
   pageTexts: Record<number, string>;
   fullText: string;
 }> {
-  const data = await pdfParse(buffer);
+  const perPageText: string[] = [];
+  const data = await pdfParse(buffer, {
+    pagerender: async (pageData: any) => {
+      const text = await renderPage(pageData);
+      perPageText.push(text);
+      return text;
+    },
+  });
 
   const totalPages: number = data.numpages || 1;
   const fullText: string = data.text || "";
 
-  // Split the full text into per-page chunks by distributing lines evenly.
-  // This is an approximation — pdf-parse v1 doesn't expose hard page breaks,
-  // but the line distribution is accurate enough for illustration context windows.
   const pageTexts: Record<number, string> = {};
 
-  if (fullText.length > 0) {
+  if (perPageText.length === totalPages) {
+    for (let i = 1; i <= totalPages; i++) {
+      pageTexts[i] = perPageText[i - 1] || "";
+    }
+  } else if (fullText.includes("\f")) {
+    const pages = fullText.split("\f");
+    for (let i = 1; i <= totalPages; i++) {
+      pageTexts[i] = (pages[i - 1] || "").trim();
+    }
+  } else {
     const lines = fullText.split("\n").filter((l) => l.trim().length > 0);
     const linesPerPage = Math.max(1, Math.ceil(lines.length / totalPages));
 
@@ -30,10 +73,6 @@ export async function parsePdf(buffer: Buffer): Promise<{
       const start = (i - 1) * linesPerPage;
       const end = Math.min(i * linesPerPage, lines.length);
       pageTexts[i] = lines.slice(start, end).join("\n").trim();
-    }
-  } else {
-    for (let i = 1; i <= totalPages; i++) {
-      pageTexts[i] = "";
     }
   }
 
