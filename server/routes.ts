@@ -4,7 +4,21 @@ import multer from "multer";
 import { storage } from "./storage";
 import { parsePdf } from "./pdf";
 import { detectBookBoundaries, calculateIllustrationBlocks, generatePrompts, extractCharacters } from "./prompts";
-import type { IllustrationBlock } from "@shared/schema";
+import type { IllustrationBlock, PromptVariation } from "@shared/schema";
+
+const BLOCK_DELAY_MS = 600; // delay between sequential LLM calls to avoid rate limits
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function fallbackPrompts(reason: string): PromptVariation[] {
+  return [
+    { type: "moment", label: "Moment / Action", text: `[${reason}] Please regenerate this block.` },
+    { type: "atmosphere", label: "Atmosphere / Environment", text: `[${reason}] Please regenerate this block.` },
+    { type: "emotion", label: "Emotion / Symbolism", text: `[${reason}] Please regenerate this block.` },
+  ];
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -106,7 +120,8 @@ export async function registerRoutes(
     const blocks = calculateIllustrationBlocks(project.boundaries.startPage, project.boundaries.endPage);
     const illustrations: IllustrationBlock[] = [];
 
-    for (const block of blocks) {
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
       let contextText = "";
       for (let p = block.contextPages[0]; p <= block.contextPages[1]; p++) {
         const pageText = project.pageTexts[p] || "";
@@ -119,17 +134,28 @@ export async function registerRoutes(
         contextText = `Pages ${block.pageRange[0]} to ${block.pageRange[1]} (no text extracted)`;
       }
 
-      const prompts = await generatePrompts(
-        contextText,
-        block.pageRange,
-        project.settings.promptTone,
-        project.settings.forbiddenPhrases
-      );
+      let prompts: PromptVariation[];
+      try {
+        prompts = await generatePrompts(
+          contextText,
+          block.pageRange,
+          project.settings.promptTone,
+          project.settings.forbiddenPhrases
+        );
+      } catch (err: any) {
+        const reason = err?.status === 429 ? "Rate limit hit" : "Generation failed";
+        console.error(`Block ${block.index} (pages ${block.pageRange[0]}-${block.pageRange[1]}) failed: ${err?.message}`);
+        // Save whatever we have so far so partial progress isn't lost
+        await storage.updateIllustrations(project.id, illustrations);
+        prompts = fallbackPrompts(reason);
+      }
 
-      illustrations.push({
-        ...block,
-        prompts,
-      });
+      illustrations.push({ ...block, prompts });
+
+      // Throttle: pause between blocks to avoid overloading the LLM API
+      if (i < blocks.length - 1) {
+        await sleep(BLOCK_DELAY_MS);
+      }
     }
 
     await storage.updateIllustrations(project.id, illustrations);

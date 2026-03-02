@@ -1,4 +1,4 @@
-import { openai } from "./openai";
+import { openai, MODEL_NAME } from "./openai";
 import type { BookBoundaries, PromptVariation, ExtractedCharacter } from "@shared/schema";
 
 export async function detectBookBoundaries(
@@ -16,7 +16,7 @@ export async function detectBookBoundaries(
     .join("\n\n");
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: MODEL_NAME,
     messages: [
       {
         role: "system",
@@ -85,7 +85,7 @@ export async function generatePrompts(
   const forbiddenList = forbiddenPhrases.join(", ");
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: MODEL_NAME,
     messages: [
       {
         role: "system",
@@ -149,7 +149,7 @@ export async function extractCharacters(
   const truncatedText = fullText.substring(0, 15000);
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: MODEL_NAME,
     messages: [
       {
         role: "system",
