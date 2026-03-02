@@ -44,7 +44,11 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  const esmOnlyPackages = ["pdf-parse", "pdfjs-dist"];
+  const externals = [
+    ...allDeps.filter((dep) => !allowlist.includes(dep)),
+    ...esmOnlyPackages,
+  ];
 
   await esbuild({
     entryPoints: ["server/index.ts"],
@@ -54,6 +58,12 @@ async function buildAll() {
     outfile: "dist/index.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
+    },
+    banner: {
+      js: [
+        'const{createRequire:__cr}=require("module");',
+        'const __require=__cr(__filename);',
+      ].join(""),
     },
     minify: true,
     external: externals,
