@@ -1,37 +1,78 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { type ProjectData, type ProjectSettings, type IllustrationBlock, type ExtractedCharacter, type BookBoundaries, defaultSettings } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getProject(id: string): Promise<ProjectData | undefined>;
+  createProject(fileName: string, totalPages: number, pageTexts: Record<number, string>): Promise<ProjectData>;
+  updateBoundaries(id: string, boundaries: BookBoundaries): Promise<ProjectData | undefined>;
+  updateIllustrations(id: string, illustrations: IllustrationBlock[]): Promise<ProjectData | undefined>;
+  updateCharacters(id: string, characters: ExtractedCharacter[]): Promise<ProjectData | undefined>;
+  updateSettings(id: string, settings: ProjectSettings): Promise<ProjectData | undefined>;
+  updateSingleIllustration(id: string, illustrationIndex: number, illustration: IllustrationBlock): Promise<ProjectData | undefined>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private projects: Map<string, ProjectData>;
 
   constructor() {
-    this.users = new Map();
+    this.projects = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getProject(id: string): Promise<ProjectData | undefined> {
+    return this.projects.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createProject(fileName: string, totalPages: number, pageTexts: Record<number, string>): Promise<ProjectData> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const project: ProjectData = {
+      id,
+      fileName,
+      totalPages,
+      boundaries: null,
+      illustrations: [],
+      characters: [],
+      settings: { ...defaultSettings },
+      pageTexts,
+    };
+    this.projects.set(id, project);
+    return project;
+  }
+
+  async updateBoundaries(id: string, boundaries: BookBoundaries): Promise<ProjectData | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    project.boundaries = boundaries;
+    return project;
+  }
+
+  async updateIllustrations(id: string, illustrations: IllustrationBlock[]): Promise<ProjectData | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    project.illustrations = illustrations;
+    return project;
+  }
+
+  async updateCharacters(id: string, characters: ExtractedCharacter[]): Promise<ProjectData | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    project.characters = characters;
+    return project;
+  }
+
+  async updateSettings(id: string, settings: ProjectSettings): Promise<ProjectData | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    project.settings = settings;
+    return project;
+  }
+
+  async updateSingleIllustration(id: string, illustrationIndex: number, illustration: IllustrationBlock): Promise<ProjectData | undefined> {
+    const project = this.projects.get(id);
+    if (!project) return undefined;
+    if (illustrationIndex >= 0 && illustrationIndex < project.illustrations.length) {
+      project.illustrations[illustrationIndex] = illustration;
+    }
+    return project;
   }
 }
 
