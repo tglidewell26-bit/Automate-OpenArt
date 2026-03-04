@@ -154,18 +154,18 @@ Classic Books for All takes iconic literary works and simplifies them for young 
 }
 
 export async function extractCharacters(
-  fullText: string
+  bookTitle: string
 ): Promise<ExtractedCharacter[]> {
-  const truncatedText = fullText.substring(0, 15000);
+  const { perplexity, PERPLEXITY_MODEL } = await import("./perplexity");
 
-  const response = await openai.chat.completions.create({
-    model: MODEL_NAME,
+  const response = await perplexity.chat.completions.create({
+    model: PERPLEXITY_MODEL,
     messages: [
       {
         role: "system",
-        content: `You are extracting character references from a children's book for use in image generation tools.
+        content: `You are a children's book expert. Look up the book and identify all characters.
 
-For each character found, extract:
+For each character found, provide:
 - name: The character's primary name
 - aliases: Alternative names or nicknames (array of strings)
 - physicalTraits: Physical appearance details (hair, eyes, build, age, etc.)
@@ -185,14 +185,13 @@ Respond with ONLY valid JSON array:
   }
 ]
 
-If no characters are found, return an empty array [].`
+If no characters are found or the book cannot be identified, return an empty array [].`
       },
       {
         role: "user",
-        content: `Extract all characters from this book text:\n\n${truncatedText}`
+        content: `Look up the children's book titled "${bookTitle}" and list all characters with their details.`
       }
     ],
-    max_completion_tokens: 4096,
   });
 
   const content = response.choices[0]?.message?.content || "";

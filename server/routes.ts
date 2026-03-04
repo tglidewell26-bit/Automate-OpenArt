@@ -205,8 +205,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const fullText = Object.values(project.pageTexts).join("\n\n");
-    const characters = await extractCharacters(fullText);
+    const bookTitle = project.fileName.replace(/\.pdf$/i, "");
+    const characters = await extractCharacters(bookTitle);
     await storage.updateCharacters(project.id, characters);
 
     res.json({ characters });
