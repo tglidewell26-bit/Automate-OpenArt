@@ -14,9 +14,9 @@ function sleep(ms: number) {
 
 function fallbackPrompts(reason: string): PromptVariation[] {
   return [
-    { type: "moment", label: "Moment / Action", text: `[${reason}] Please regenerate this block.` },
-    { type: "atmosphere", label: "Atmosphere / Environment", text: `[${reason}] Please regenerate this block.` },
-    { type: "emotion", label: "Emotion / Symbolism", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea1", label: "Prompt Idea 1", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea2", label: "Prompt Idea 2", text: `[${reason}] Please regenerate this block.` },
+    { type: "idea3", label: "Prompt Idea 3", text: `[${reason}] Please regenerate this block.` },
   ];
 }
 

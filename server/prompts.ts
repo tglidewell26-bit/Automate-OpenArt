@@ -138,18 +138,31 @@ Classic Books for All takes iconic literary works and simplifies them for young 
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      return parsed.map((p: any) => ({
-        type: p.type || "moment",
-        label: p.label || p.type || "Prompt",
+      const labels = ["Prompt Idea 1", "Prompt Idea 2", "Prompt Idea 3"] as const;
+      const fallbackTypes = ["idea1", "idea2", "idea3"] as const;
+      const normalized = parsed.slice(0, 3).map((p: any, idx: number) => ({
+        type: (fallbackTypes.includes(p.type) ? p.type : fallbackTypes[idx]) as "idea1" | "idea2" | "idea3",
+        label: p.label || labels[idx],
         text: p.text || "",
       }));
+
+      while (normalized.length < 3) {
+        const idx = normalized.length;
+        normalized.push({
+          type: fallbackTypes[idx],
+          label: labels[idx],
+          text: "Failed to generate prompt. Please try again.",
+        });
+      }
+
+      return normalized;
     }
   } catch {}
 
   return [
-    { type: "moment", label: "Moment / Action", text: "Failed to generate prompt. Please try again." },
-    { type: "atmosphere", label: "Atmosphere / Environment", text: "Failed to generate prompt. Please try again." },
-    { type: "emotion", label: "Emotion / Symbolism", text: "Failed to generate prompt. Please try again." },
+    { type: "idea1", label: "Prompt Idea 1", text: "Failed to generate prompt. Please try again." },
+    { type: "idea2", label: "Prompt Idea 2", text: "Failed to generate prompt. Please try again." },
+    { type: "idea3", label: "Prompt Idea 3", text: "Failed to generate prompt. Please try again." },
   ];
 }
 
@@ -168,11 +181,14 @@ export async function extractCharacters(
 For each character found, provide:
 - name: The character's primary name
 - aliases: Alternative names or nicknames (array of strings)
-- physicalTraits: Physical appearance details (hair, eyes, build, age, etc.)
-- clothing: Typical clothing or accessories described
-- recurringFeatures: Objects, pets, or notable recurring visual elements associated with this character
+- physicalTraits: Only details explicitly grounded in the text
+- clothing: Clothing/accessories explicitly grounded in the text
+- recurringFeatures: Recurring props, pets, or motifs from the text
 
-Merge duplicates (e.g. "Mr. Gulliver" and "Gulliver" should be one entry).
+Rules:
+- Use only evidence from the supplied text.
+- Merge duplicates (e.g. "Mr. Gulliver" and "Gulliver" should be one entry).
+- Ignore one-off generic mentions like "a boy" unless that figure becomes recurring.
 
 Respond with ONLY valid JSON array:
 [
