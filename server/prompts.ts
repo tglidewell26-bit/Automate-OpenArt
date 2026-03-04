@@ -41,18 +41,24 @@ If you cannot determine start or end pages, return 'cannot determine'`
 
   const content = response.choices[0]?.message?.content || "";
 
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        startPage: Math.max(1, Math.min(parsed.startPage || 1, totalPages)),
-        endPage: Math.max(1, Math.min(parsed.endPage || totalPages, totalPages)),
-      };
-    }
-  } catch {}
+  if (content.toLowerCase().includes("cannot determine")) {
+    throw new Error(
+      "AI could not determine the book boundaries. The PDF may not contain a clear Table of Contents or recognizable chapter structure. Please check the PDF and try again."
+    );
+  }
 
-  return { startPage: 1, endPage: totalPages };
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error(
+      "AI returned an unexpected response while detecting book boundaries. Please try uploading again."
+    );
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  return {
+    startPage: Math.max(1, Math.min(parsed.startPage || 1, totalPages)),
+    endPage: Math.max(1, Math.min(parsed.endPage || totalPages, totalPages)),
+  };
 }
 
 export function calculateIllustrationBlocks(
