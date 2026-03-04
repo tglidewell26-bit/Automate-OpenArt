@@ -134,21 +134,22 @@ export default function IllustrationsTab({ project, onIllustrationsUpdated }: Il
                     <span className="text-xs text-muted-foreground">
                       Context: pp. {block.contextPages[0]}–{block.contextPages[1]}
                     </span>
-                    {block.prompts.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRegenerate(idx)}
-                        disabled={regeneratingIndex === idx}
-                        data-testid={`button-regenerate-${idx}`}
-                      >
-                        {regeneratingIndex === idx ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3 h-3" />
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRegenerate(idx)}
+                      disabled={regeneratingIndex === idx}
+                      data-testid={`button-regenerate-${idx}`}
+                    >
+                      {regeneratingIndex === idx ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          {block.prompts.length > 0 ? "Regenerate" : "Generate"}
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -157,9 +158,9 @@ export default function IllustrationsTab({ project, onIllustrationsUpdated }: Il
                   {block.prompts.map((prompt, pi) => {
                     const copyId = `${idx}-${pi}`;
                     const typeColors: Record<string, string> = {
-                      idea1: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
-                      idea2: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
-                      idea3: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
+                      variation1: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
+                      variation2: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
+                      variation3: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
                     };
 
                     return (

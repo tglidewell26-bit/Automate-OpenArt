@@ -14,9 +14,9 @@ function sleep(ms: number) {
 
 function fallbackPrompts(reason: string): PromptVariation[] {
   return [
-    { type: "idea1", label: "Prompt Idea 1", text: `[${reason}] Please regenerate this block.` },
-    { type: "idea2", label: "Prompt Idea 2", text: `[${reason}] Please regenerate this block.` },
-    { type: "idea3", label: "Prompt Idea 3", text: `[${reason}] Please regenerate this block.` },
+    { type: "variation1", label: "Prompt Variation 1", text: `[${reason}] Please regenerate this block.` },
+    { type: "variation2", label: "Prompt Variation 2", text: `[${reason}] Please regenerate this block.` },
+    { type: "variation3", label: "Prompt Variation 3", text: `[${reason}] Please regenerate this block.` },
   ];
 }
 
@@ -47,8 +47,17 @@ export async function registerRoutes(
 
       const project = await storage.createProject(req.file.originalname, totalPages, pageTexts);
 
-      const boundaries = await detectBookBoundaries(pageTexts, totalPages);
+      const bookTitle = req.file.originalname.replace(/\.pdf$/i, "");
+      const [boundaries, extractedCharacters] = await Promise.all([
+        detectBookBoundaries(pageTexts, totalPages),
+        extractCharacters(bookTitle).catch((err) => {
+          console.error("Character extraction on upload failed:", err?.message || err);
+          return [];
+        }),
+      ]);
+
       await storage.updateBoundaries(project.id, boundaries);
+      await storage.updateCharacters(project.id, extractedCharacters);
 
       const blocks = calculateIllustrationBlocks(boundaries.startPage, boundaries.endPage);
       const illustrations: IllustrationBlock[] = blocks.map(b => ({
@@ -63,6 +72,7 @@ export async function registerRoutes(
         totalPages,
         boundaries,
         illustrations,
+        characters: extractedCharacters,
       });
     } catch (error: any) {
       console.error("Upload error:", error);

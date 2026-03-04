@@ -16,7 +16,7 @@ export interface IllustrationBlock {
 }
 
 export interface PromptVariation {
-  type: "idea1" | "idea2" | "idea3";
+  type: "variation1" | "variation2" | "variation3";
   label: string;
   text: string;
 }
