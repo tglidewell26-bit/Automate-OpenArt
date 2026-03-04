@@ -76,12 +76,14 @@ export function calculateIllustrationBlocks(
   return blocks;
 }
 
-export async function generatePrompts(
+async function generateSinglePrompt(
   contextText: string,
   pageRange: [number, number],
   tone: string,
-  forbiddenPhrases: string[]
-): Promise<PromptVariation[]> {
+  forbiddenPhrases: string[],
+  variationIndex: number,
+  existingPrompts: string[]
+): Promise<string> {
   const forbiddenList = forbiddenPhrases.join(", ");
 
   const response = await openai.chat.completions.create({
@@ -93,77 +95,71 @@ export async function generatePrompts(
 You are an expert visual prompt engineer specializing in OpenArt.ai image generation for **Classic Books for All** — a company that adapts classic literature (Frankenstein, The Time Machine, and similar works) into illustrated books for children. Your sole function is to receive a page of text and output a ready-to-use image prompt.
 
 ## Task
-When given a page of text, generate a precise, detailed image prompt optimized for OpenArt.ai that will produce a high-quality illustration faithful to the scene, mood, and tone of that page.
+When given a page of text, generate one precise, detailed image prompt optimized for OpenArt.ai that will produce a high-quality illustration faithful to the scene, mood, and tone of that page.
 
 ## Context
-Classic Books for All takes iconic literary works and simplifies them for young readers. Illustrations must honor the source material's atmosphere while remaining warm and accessible. Your prompts translate written narrative into vivid, generatable imagery on OpenArt.ai without including any technical parameters, style references, or medium descriptors that are already preset in the platform.
+Classic Books for All takes iconic literary works and simplifies them for young readers. Illustrations must honor the source material's atmosphere while remaining warm and accessible. Your prompts translate written narrative into vivid, generatable imagery on OpenArt.ai without including technical parameters, style references, or medium descriptors already preset in the platform.
 
 ## Instructions
+- Return a single prompt as plain text (no JSON, no markdown, no numbering).
+- Prompts can be up to 300 words — use every word to add visual information.
+- Include a negative prompt section at the end beginning with "Negative prompt:".
+- Match this tone preference: ${tone}.
+- Ensure this variation is distinct from other generated prompts while staying faithful to the same pages.
+- Identify the main subject, setting, characters, action, and emotional tone.
+- Translate narrative into concrete visual descriptors: colors, lighting, composition, expressions, and environment.
+- Reference characters by name with action from the source scene.
+- Convert abstract emotions into visible concrete details.
 
-**When given a page of text:**
-- Identify the main subject, setting, characters, action, and emotional tone
-- Translate all narrative elements into concrete visual descriptors: colors, lighting, composition, expressions, environment
-- Reference characters by name with action (e.g., "Victor Frankenstein steps back as the creature opens its eyes" or "the Time Traveller grips the machine's lever as the world blurs around him")
-- Convert abstract emotions into visible, concrete details (e.g., "fear" → "wide eyes, trembling hands, a single step backward")
-- Prompts can be up to 300 words — use every word to add visual information
-- Include a negative prompt to exclude elements that should not appear in the image
-
-**Do NOT include in any prompt:**
+Do NOT include:
 - Character physical descriptions or appearance details
-- Illustration style descriptors (e.g., whimsical, storybook, digital art)
-- Art medium references (e.g., watercolor, charcoal, oil paint, gouache)
-- Quality or mood tags (e.g., children's book illustration, storybook art, vibrant colors)
-- Camera equipment references (e.g., lens type, focal length, shot type)
-- Resolution or technical specs (e.g., 4K, 8K, high resolution)
+- Illustration style descriptors
+- Art medium references
+- Quality or mood tags
+- Camera equipment references
+- Resolution or technical specs
+- Any of these forbidden phrases: ${forbiddenList}
 
-**Tone and visual guidance:**
-- Match the energy of the text: quiet or somber scenes get soft muted palettes; adventure or action scenes get bold saturated colors
-
-**Edge cases:**
-- If the page text is sparse, infer setting and mood from the source work's context and generate the richest possible visual scene
-- If multiple scenes appear on one page, focus on the most visually dominant or emotionally significant moment
-- Always generate a prompt immediately — never ask for more information or clarification`
+Edge cases:
+- If the source text is sparse, infer scene details from context and still produce a rich, concrete prompt.
+- If multiple scenes appear, focus on the most visually dominant or emotionally significant moment.
+- Always generate immediately without asking follow-up questions.`
       },
       {
         role: "user",
-        content: `Generate illustration prompts for pages ${pageRange[0]}-${pageRange[1]} based on this text context:\n\n${contextText}`
+        content: `Generate variation ${variationIndex + 1} for pages ${pageRange[0]}-${pageRange[1]} using this context:\n\n${contextText}\n\nAlready generated variations (do not repeat wording or composition):\n${existingPrompts.join("\n---\n") || "None yet."}`
       }
     ],
-    max_completion_tokens: 2048,
+    max_completion_tokens: 900,
   });
 
-  const content = response.choices[0]?.message?.content || "";
+  return (response.choices[0]?.message?.content || "").trim();
+}
 
-  try {
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      const labels = ["Prompt Idea 1", "Prompt Idea 2", "Prompt Idea 3"] as const;
-      const fallbackTypes = ["idea1", "idea2", "idea3"] as const;
-      const normalized = parsed.slice(0, 3).map((p: any, idx: number) => ({
-        type: (fallbackTypes.includes(p.type) ? p.type : fallbackTypes[idx]) as "idea1" | "idea2" | "idea3",
-        label: p.label || labels[idx],
-        text: p.text || "",
-      }));
+export async function generatePrompts(
+  contextText: string,
+  pageRange: [number, number],
+  tone: string,
+  forbiddenPhrases: string[]
+): Promise<PromptVariation[]> {
+  const labels = ["Prompt Variation 1", "Prompt Variation 2", "Prompt Variation 3"] as const;
+  const types = ["variation1", "variation2", "variation3"] as const;
+  const promptTexts: string[] = [];
 
-      while (normalized.length < 3) {
-        const idx = normalized.length;
-        normalized.push({
-          type: fallbackTypes[idx],
-          label: labels[idx],
-          text: "Failed to generate prompt. Please try again.",
-        });
-      }
-
-      return normalized;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const text = await generateSinglePrompt(contextText, pageRange, tone, forbiddenPhrases, i, promptTexts);
+      promptTexts.push(text || "Failed to generate prompt. Please try again.");
+    } catch {
+      promptTexts.push("Failed to generate prompt. Please try again.");
     }
-  } catch {}
+  }
 
-  return [
-    { type: "idea1", label: "Prompt Idea 1", text: "Failed to generate prompt. Please try again." },
-    { type: "idea2", label: "Prompt Idea 2", text: "Failed to generate prompt. Please try again." },
-    { type: "idea3", label: "Prompt Idea 3", text: "Failed to generate prompt. Please try again." },
-  ];
+  return promptTexts.map((text, idx) => ({
+    type: types[idx],
+    label: labels[idx],
+    text,
+  }));
 }
 
 export async function extractCharacters(

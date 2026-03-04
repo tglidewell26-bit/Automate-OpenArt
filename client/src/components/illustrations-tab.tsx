@@ -157,9 +157,9 @@ export default function IllustrationsTab({ project, onIllustrationsUpdated }: Il
                   {block.prompts.map((prompt, pi) => {
                     const copyId = `${idx}-${pi}`;
                     const typeColors: Record<string, string> = {
-                      idea1: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
-                      idea2: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
-                      idea3: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
+                      variation1: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
+                      variation2: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
+                      variation3: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
                     };
 
                     return (
