@@ -6,7 +6,7 @@ A web app that helps authors plan illustrations for children's books. It reads P
 ## Architecture
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS + shadcn/ui
 - **Backend**: Express.js with in-memory storage
-- **AI**: OpenAI via Replit AI Integrations (no API key needed)
+- **AI**: OpenAI (user's own API key, gpt-5.2) for prompts/boundaries, Perplexity (sonar model) for character extraction
 - **PDF Parsing**: pdf-parse library
 
 ## Key Features
@@ -22,7 +22,8 @@ server/routes.ts          - API endpoints (upload, illustrations, characters, se
 server/storage.ts         - In-memory project storage
 server/pdf.ts             - PDF parsing
 server/prompts.ts         - AI prompt generation and character extraction
-server/openai.ts          - OpenAI client
+server/openai.ts          - OpenAI client configuration
+server/perplexity.ts      - Perplexity client for character lookups
 client/src/App.tsx         - Main app with tab routing
 client/src/pages/home.tsx  - Home page with tab layout
 client/src/components/     - Tab components (upload, illustrations, characters, settings)

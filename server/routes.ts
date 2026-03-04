@@ -205,21 +205,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const { startPage, endPage } = project.boundaries || { startPage: 1, endPage: project.totalPages };
-    let bookText = "";
-    for (let p = startPage; p <= endPage; p++) {
-      const pageText = project.pageTexts[p] || "";
-      if (pageText.trim()) {
-        bookText += `[Page ${p}]\n${pageText}\n\n`;
-      }
-    }
-
-    const fallbackText = Object.entries(project.pageTexts)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([page, text]) => `[Page ${page}]\n${text}`)
-      .join("\n\n");
-
-    const characters = await extractCharacters(bookText || fallbackText);
+    const bookTitle = project.fileName.replace(/\.pdf$/i, "");
+    const characters = await extractCharacters(bookTitle);
     await storage.updateCharacters(project.id, characters);
 
     res.json({ characters });

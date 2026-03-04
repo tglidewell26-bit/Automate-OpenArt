@@ -20,23 +20,23 @@ export async function detectBookBoundaries(
     messages: [
       {
         role: "system",
-        content: `You are analyzing a children's book PDF to find the book's actual content boundaries.
+        content: `You are analyzing a children's book PDF to find the book's actual content boundaries.This information will be used to generate illustrations for the book.
 
 Your task:
-1. Look at the early pages to find where Chapter 1 (or the first actual story content) begins. Skip title pages, copyright, dedication, and table of contents.
-2. Look at the late pages to find the Author Biography or About the Author section. The book ends on the page BEFORE that section begins.
+1. Look at the Table of Contents to find where Chapter 1 (or the first actual story content) begins. This page number is important, because it will be used to determine the start of the book.
+2. Now find the end of the story. This is the last page of the actual story content.Usually this is followed by the Author's biography. 
 
 Respond with ONLY valid JSON in this format:
 {"startPage": <number>, "endPage": <number>}
 
-If you cannot determine start, use page 1. If you cannot determine end, use the last page number.`
+If you cannot determine start or end pages, return 'cannot determine'`
       },
       {
         role: "user",
         content: `Total pages: ${totalPages}\n\n=== EARLY PAGES ===\n${earlyPages}\n\n=== LATE PAGES ===\n${latePages}`
       }
     ],
-    max_completion_tokens: 200,
+    max_completion_tokens: 800,
   });
 
   const content = response.choices[0]?.message?.content || "";
@@ -89,31 +89,40 @@ export async function generatePrompts(
     messages: [
       {
         role: "system",
-        content: `You are an expert at generating OpenArt-optimized image prompts for children's book illustrations.
+        content: `## Role
+You are an expert visual prompt engineer specializing in OpenArt.ai image generation for **Classic Books for All** — a company that adapts classic literature (Frankenstein, The Time Machine, and similar works) into illustrated books for children. Your sole function is to receive a page of text and output a ready-to-use image prompt.
 
-RULES (STRICT):
-- Base every prompt strictly on the provided page text. Do not invent unrelated scenes.
-- Each prompt must be 110-170 words
-- Write in present tense
-- Write in prose only (no bullets, no lists)
-- Every prompt must naturally include action, atmosphere, and emotion in one cohesive scene description
-- Mention character names when they are present in the source text, and keep details consistent with the text
-- NEVER include any of these forbidden terms: ${forbiddenList}
-- NEVER describe artistic medium, style, resolution, camera terms, or rendering terms
+## Task
+When given a page of text, generate a precise, detailed image prompt optimized for OpenArt.ai that will produce a high-quality illustration faithful to the scene, mood, and tone of that page.
 
-TONE: ${tone}
+## Context
+Classic Books for All takes iconic literary works and simplifies them for young readers. Illustrations must honor the source material's atmosphere while remaining warm and accessible. Your prompts translate written narrative into vivid, generatable imagery on OpenArt.ai without including any technical parameters, style references, or medium descriptors that are already preset in the platform.
 
-Generate exactly 3 DIFFERENT prompt ideas for the same page range:
-1. IDEA 1: a faithful interpretation of the most important moment
-2. IDEA 2: a different but still text-faithful composition or moment
-3. IDEA 3: another text-faithful option emphasizing a different beat
+## Instructions
 
-Respond with ONLY valid JSON array:
-[
-  {"type": "idea1", "label": "Prompt Idea 1", "text": "..."},
-  {"type": "idea2", "label": "Prompt Idea 2", "text": "..."},
-  {"type": "idea3", "label": "Prompt Idea 3", "text": "..."}
-]`
+**When given a page of text:**
+- Identify the main subject, setting, characters, action, and emotional tone
+- Translate all narrative elements into concrete visual descriptors: colors, lighting, composition, expressions, environment
+- Reference characters by name with action (e.g., "Victor Frankenstein steps back as the creature opens its eyes" or "the Time Traveller grips the machine's lever as the world blurs around him")
+- Convert abstract emotions into visible, concrete details (e.g., "fear" → "wide eyes, trembling hands, a single step backward")
+- Prompts can be up to 300 words — use every word to add visual information
+- Include a negative prompt to exclude elements that should not appear in the image
+
+**Do NOT include in any prompt:**
+- Character physical descriptions or appearance details
+- Illustration style descriptors (e.g., whimsical, storybook, digital art)
+- Art medium references (e.g., watercolor, charcoal, oil paint, gouache)
+- Quality or mood tags (e.g., children's book illustration, storybook art, vibrant colors)
+- Camera equipment references (e.g., lens type, focal length, shot type)
+- Resolution or technical specs (e.g., 4K, 8K, high resolution)
+
+**Tone and visual guidance:**
+- Match the energy of the text: quiet or somber scenes get soft muted palettes; adventure or action scenes get bold saturated colors
+
+**Edge cases:**
+- If the page text is sparse, infer setting and mood from the source work's context and generate the richest possible visual scene
+- If multiple scenes appear on one page, focus on the most visually dominant or emotionally significant moment
+- Always generate a prompt immediately — never ask for more information or clarification`
       },
       {
         role: "user",
@@ -158,18 +167,18 @@ Respond with ONLY valid JSON array:
 }
 
 export async function extractCharacters(
-  fullText: string
+  bookTitle: string
 ): Promise<ExtractedCharacter[]> {
-  const truncatedText = fullText.substring(0, 50000);
+  const { perplexity, PERPLEXITY_MODEL } = await import("./perplexity");
 
-  const response = await openai.chat.completions.create({
-    model: MODEL_NAME,
+  const response = await perplexity.chat.completions.create({
+    model: PERPLEXITY_MODEL,
     messages: [
       {
         role: "system",
-        content: `You are extracting character references from a children's book for use in image generation tools.
+        content: `You are a children's book expert. Look up the book and identify all characters.
 
-For each named or clearly recurring character found, extract:
+For each character found, provide:
 - name: The character's primary name
 - aliases: Alternative names or nicknames (array of strings)
 - physicalTraits: Only details explicitly grounded in the text
@@ -192,14 +201,13 @@ Respond with ONLY valid JSON array:
   }
 ]
 
-If no characters are found, return an empty array [].`
+If no characters are found or the book cannot be identified, return an empty array [].`
       },
       {
         role: "user",
-        content: `Extract all characters from this book text:\n\n${truncatedText}`
+        content: `Look up the children's book titled "${bookTitle}" and list all characters with their details.`
       }
     ],
-    max_completion_tokens: 4096,
   });
 
   const content = response.choices[0]?.message?.content || "";
