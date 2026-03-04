@@ -20,16 +20,16 @@ export async function detectBookBoundaries(
     messages: [
       {
         role: "system",
-        content: `You are analyzing a children's book PDF to find the book's actual content boundaries.
+        content: `You are analyzing a children's book PDF to find the book's actual content boundaries.This information will be used to generate illustrations for the book.
 
 Your task:
-1. Look at the early pages to find where Chapter 1 (or the first actual story content) begins. Skip title pages, copyright, dedication, and table of contents.
-2. Look at the late pages to find the Author Biography or About the Author section. The book ends on the page BEFORE that section begins.
+1. Look at the Table of Contents to find where Chapter 1 (or the first actual story content) begins. This page number is important, because it will be used to determine the start of the book.
+2. Now find the end of the story. This is the last page of the actual story content.Usually this is followed by the Author's biography. 
 
 Respond with ONLY valid JSON in this format:
 {"startPage": <number>, "endPage": <number>}
 
-If you cannot determine start, use page 1. If you cannot determine end, use the last page number.`
+If you cannot determine start or end pages, return 'cannot determine'`
       },
       {
         role: "user",
